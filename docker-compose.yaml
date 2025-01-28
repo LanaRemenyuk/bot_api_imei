@@ -1,0 +1,56 @@
+version: '3.9'
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile 
+    container_name: app
+    ports:
+      - "5000:5000"
+    command: >
+      sh -c "
+        export PGPASSWORD=${DB_PASSWORD} &&
+        until pg_isready -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USERNAME}; do
+          echo 'Waiting for database...';
+          sleep 2;
+        done &&
+        psql -h ${DB_HOST} -U ${DB_USERNAME} -d ${DB_NAME} -c \"
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          telegram_id BIGINT NOT NULL,
+          token TEXT NOT NULL,
+          is_whitelisted BOOLEAN NOT NULL
+        );\" &&
+        psql -h ${DB_HOST} -U ${DB_USERNAME} -d ${DB_NAME} -c \"
+        INSERT INTO users (id, username, telegram_id, token, is_whitelisted)
+        VALUES ('550e8400-e29b-41d4-a716-446655440000', 'testuser', '${TG_USER_API}', '${IMEI_CHECK_API_TOKEN_SANDBOX}', TRUE)
+        ON CONFLICT (username) DO NOTHING;\" &&
+        poetry run python main.py 0.0.0.0:5000"
+
+    depends_on:
+      - db
+    env_file:
+      - /.env
+    environment:
+      - POSTGRES_URL=${DB_URL}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_USERNAME=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PORT=${DB_PORT}
+      - POSTGRES_DB=${DB_NAME}
+      - TG_USER_API=${TG_USER_API}
+      - IMEI_CHECK_API_TOKEN_SANDBOX=${IMEI_CHECK_API_TOKEN_SANDBOX}
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

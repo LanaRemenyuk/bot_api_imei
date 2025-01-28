@@ -44,7 +44,7 @@ class IMEIService:
             }
 
             error_message = error_messages.get(response.status_code, "Неизвестная ошибка.")
-            return {'error': f'{error_message} Код ошибки: {response.status_code}, {response.text}'}
+            return {'error': f'{error_message} Код ошибки: {response.status_code}'}
 
         except requests.exceptions.Timeout:
             return {'error': "Ошибка подключения: запрос превысил время ожидания. Попробуйте позже."}
